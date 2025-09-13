@@ -1,8 +1,40 @@
 @import "tailwindcss";
 
+h3 {
+  font-weight: bold;
+  font-size: 36px;
+  font-family: DM Sans, sans-serif;
+}
+
+h2 {
+  font-weight: bold;
+  font-size: 24px;
+  font-family: DM Sans, sans-serif;
+}
+
+h1 {
+  font-weight: bold;
+  font-size: 12px;
+  font-family: DM Sans, sans-serif;
+}
+
+.bg-accent {
+  background-color: var(--accent);
+}
+.bg-input {
+  background-color: var(--input);
+}
+.bg-secondary {
+  background-color: var(--secondary);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --accent: #F29849;
+  --secondary: #DEAC5D;
+  --bglight: #F8F8FC;
+  --darktext: #101012;
+  --input: #FFFFFF;
+  --container: #D9D9D9;
 }
 
 @theme inline {
