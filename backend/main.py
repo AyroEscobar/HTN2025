@@ -2,6 +2,8 @@ from typing import Union, Optional, List
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 import asyncio
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI()
 
@@ -9,6 +11,16 @@ app = FastAPI()
 # uv run fastapi dev main.py
 
 # Pydantic models for request/response
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 class ReservationRequest(BaseModel):
     # Required fields
     party_size: int = Field(..., ge=1, le=20, description="Number of people (1-20)")
