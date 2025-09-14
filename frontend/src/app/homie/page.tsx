@@ -2,10 +2,11 @@
 import { Button } from '@/components/ui/button'
 import { Calendar24 } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
-import { ArrowRight, MapPin, Clock, Calendar } from 'lucide-react'
+import { ArrowRight, MapPin, Clock, Calendar, ArrowLeft } from 'lucide-react'
 import React, { useState } from 'react'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { jsonrepair } from "jsonrepair";
+import Link from 'next/link'
 
 interface Itinerary {
   stops: string[];
@@ -214,6 +215,16 @@ const getGoogleMapsUrl = (): string => {
 
   return (
     <div className='flex flex-col justify-center items-center min-h-[100vh] w-[100vw] bg-bgcontainer gap-6 p-4'>
+      {/* Back Arrow */}
+      <div className="absolute top-6 left-6">
+        <Link href="/hoam">
+          <Button variant="outline" size="sm" className="flex items-center gap-2">
+            <ArrowLeft size={16} />
+            Back to Home
+          </Button>
+        </Link>
+      </div>
+      
       <h3 className="text-2xl font-semibold">What are you planning?</h3>
       
       <div className="flex items-center py-4 px-8 gap-2 bg-bglight rounded-2xl border border-cardborder">

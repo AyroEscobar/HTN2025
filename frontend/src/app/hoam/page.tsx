@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
 
 // Hardcoded restaurant data
 const hardcodedRestaurants = [
@@ -171,7 +172,7 @@ const HomePage: React.FC = () => {
           <div className="flex items-center justify-between gap-4">
             {/* Logo */}
             <div className="flex-shrink-0">
-              <h1 className="text-2xl font-bold text-accent">RouteStop</h1>
+              <h1 className="text-2xl font-bold text-accent">RouteIt</h1>
             </div>
             
             {/* Search Bar */}
@@ -193,6 +194,15 @@ const HomePage: React.FC = () => {
                 >
                   {isSearching ? "Searching..." : "Add Stop"}
                 </Button>
+              </div>
+              {/* Advanced Search Link */}
+              <div className="mt-2 text-center">
+                <Link 
+                  href="/homie" 
+                  className="text-sm text-muted-foreground hover:text-accent transition-colors underline"
+                >
+                  Advanced Search
+                </Link>
               </div>
             </div>
           </div>

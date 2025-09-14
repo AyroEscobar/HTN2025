@@ -16,7 +16,7 @@ const Login: React.FC = () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       setError("");
-      router.push("/home"); // Redirect to /home after successful login
+      router.push("/hoam"); // Redirect to /hoam after successful login
     } catch (err: any) {
       setError(err.message);
     }
