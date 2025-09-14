@@ -9,6 +9,8 @@ import time
 import math
 import requests
 import re
+from flask import make_response
+
 
 # ---------- Config & env loader (same pattern you used) --------------------
 from dotenv import load_dotenv
@@ -515,7 +517,6 @@ def suggest_stops():
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
