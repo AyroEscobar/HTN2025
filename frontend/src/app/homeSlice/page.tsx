@@ -1,11 +1,16 @@
 "use client";
 import React, { useState } from 'react';
 import { VapiButton } from '@/components/VapiButton';
+import { PreferencesManager } from '@/components/PreferencesManager';
+import { VapiOfferOptionsResponse } from '@/types/vapi';
+import { CustomerPreferencesService } from '@/services/customerPreferences';
 
 function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentUserId] = useState('user_123'); // In real app, get from auth context
 
   // Hardcoded data as requested
   const previouslyVisited = [
@@ -22,6 +27,11 @@ function HomePage() {
     { id: 4, name: "City Park", location: "0.7 miles away", type: "Park" },
     { id: 5, name: "Gas Station", location: "0.4 miles away", type: "Gas Station" }
   ];
+
+  const handleVapiResponse = (response: VapiOfferOptionsResponse) => {
+    console.log("Received VAPI restaurant booking response:", response);
+    // You can add additional handling here, like showing a notification
+  };
 
   if (showProfile) {
     return (
@@ -77,13 +87,21 @@ function HomePage() {
               </div>
             </div>
             
-            <button className="bg-accent hover:bg-secondary text-white px-6 py-3 rounded-md mt-6">
-              Save Changes
-            </button>
+            <div className="flex space-x-4 mt-6">
+              <button className="bg-accent hover:bg-secondary text-white px-6 py-3 rounded-md">
+                Save Changes
+              </button>
+              <button 
+                onClick={() => setShowPreferences(true)}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-md"
+              >
+                Dining Preferences
+              </button>
+            </div>
           </div>
           
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="mb-4">Preferences</h2>
+            <h2 className="mb-4">Settings</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span>Voice Assistant Notifications</span>
@@ -182,7 +200,7 @@ function HomePage() {
 
         {/* Voice Assistant */}
         <div className="mb-8 text-center">
-          <VapiButton />
+          <VapiButton userId={currentUserId} onVapiResponse={handleVapiResponse} />
         </div>
 
         {/* Previously Visited Places */}
@@ -222,6 +240,14 @@ function HomePage() {
           </div>
         </section>
       </main>
+
+      {/* Preferences Manager Modal */}
+      {showPreferences && (
+        <PreferencesManager 
+          userId={currentUserId} 
+          onClose={() => setShowPreferences(false)} 
+        />
+      )}
     </div>
   );
 }
