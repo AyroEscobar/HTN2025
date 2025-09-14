@@ -170,6 +170,45 @@ def get_place_details(place_id, fields=None):
     r.raise_for_status()
     return r.json().get("result")
 
+BASE_PLACES_TEXTSEARCH = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+
+@app.route("/search_place", methods=["POST"])
+def search_place():
+    """
+    Search for a place using Google Places Text Search API, formats the
+    response to ensure it's compatible with the frontend.
+    """
+    print("Received search_place request")
+    data = request.json or {}
+    query = data.get("query")
+
+    if not query:
+        return jsonify({"error": "Query parameter required"}), 400
+    
+    try:
+        params = {
+            "query": query,
+            "key": GOOGLE_API_KEY
+        }
+        
+        response = requests.get(BASE_PLACES_TEXTSEARCH, params=params)
+        response.raise_for_status()
+        
+        # Process the response before sending it back
+        google_data = response.json()
+        
+        # **This is the key fix**: Ensure every result has a 'name' field.
+        # If 'name' doesn't exist, use 'formatted_address' as a fallback.
+        if google_data.get("results"):
+            for result in google_data["results"]:
+                if "name" not in result:
+                    result["name"] = result.get("formatted_address", "Unknown Place")
+        
+        return jsonify(google_data)
+        
+    except Exception as e:
+        return jsonify({"error": f"Places API error: {str(e)}"}), 500
+
 # ---------- Core: suggest mid-journey stops --------------------------------
 
 def normalize_location_input(loc):
@@ -297,8 +336,20 @@ def compute_total_time_with_insertion(stops_addr_list, insert_point_idx, candida
 
 # ---------- Flask route ---------------------------------------------------
 
-@app.route("/suggest_stops", methods=["POST"])
+@app.route("/suggest_stops", methods=["POST", "OPTIONS"])
 def suggest_stops():
+    print(f"suggest_stops endpoint called with method: {request.method}")
+    print(f"Request headers: {dict(request.headers)}")
+    print(f"Request data: {request.get_data()}")
+    
+    # Handle preflight OPTIONS request
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add('Access-Control-Allow-Headers', "*")
+        response.headers.add('Access-Control-Allow-Methods', "*")
+        return response
+    
     """
     Expects JSON body:
     {
@@ -310,47 +361,42 @@ def suggest_stops():
       "max_candidates": 20,
       "time_constraint_seconds": 1800   # optional: max allowed added detour in seconds
     }
-    Response:
-    {
-      "route_summary": { "total_duration_seconds": X, "distance_meters": Y, ... },
-      "candidates": [
-         {
-            "place_id": "...",
-            "name": "...",
-            "vicinity": "...",
-            "location": {"lat":..,"lng":..},
-            "insert_between": [index_a, index_b],
-            "total_travel_time_seconds": 12345,
-            "added_time_seconds": 600,
-            "directions_snapshot": { ... }   # directions JSON if requested (optional)
-         },
-         ...
-      ]
-    }
     """
-    data = request.json or {}
-    stops = data.get("stops")
-    if not stops or not isinstance(stops, list) or len(stops) < 2:
-        return jsonify({"error": "Provide at least 2 stops in 'stops' list"}), 400
-
-    desired_type = data.get("desired_type")
-    keyword = data.get("keyword")
-    sample_every_m = int(data.get("sample_every_m", 1500))
-    search_radius = int(data.get("search_radius", 1200))
-    max_candidates = int(data.get("max_candidates", 20))
-    time_constraint_seconds = data.get("time_constraint_seconds")  # optional
-
-    # Normalize stops and geocode if needed
-    normalized = []
-    addr_strs = []
-    for s in stops:
-        coords, addr_str = normalize_location_input(s)
-        if coords is None:
-            return jsonify({"error": f"Unable to geocode stop: {s}"}), 400
-        normalized.append(coords)
-        addr_strs.append(addr_str)
-
     try:
+        data = request.json or {}
+        print(f"Parsed JSON data: {data}")
+        
+        stops = data.get("stops")
+        if not stops or not isinstance(stops, list) or len(stops) < 2:
+            print(f"Invalid stops data: {stops}")
+            return jsonify({"error": "Provide at least 2 stops in 'stops' list"}), 400
+
+        print(f"Processing {len(stops)} stops: {stops}")
+
+        desired_type = data.get("desired_type")
+        keyword = data.get("keyword")
+        sample_every_m = int(data.get("sample_every_m", 1500))
+        search_radius = int(data.get("search_radius", 1200))
+        max_candidates = int(data.get("max_candidates", 20))
+        time_constraint_seconds = data.get("time_constraint_seconds")  # optional
+
+        print(f"Search parameters - type: {desired_type}, keyword: {keyword}")
+
+        # Normalize stops and geocode if needed
+        normalized = []
+        addr_strs = []
+        for i, s in enumerate(stops):
+            print(f"Processing stop {i}: {s}")
+            coords, addr_str = normalize_location_input(s)
+            if coords is None:
+                error_msg = f"Unable to geocode stop: {s}"
+                print(error_msg)
+                return jsonify({"error": error_msg}), 400
+            normalized.append(coords)
+            addr_strs.append(addr_str)
+            print(f"Normalized stop {i}: {coords} -> {addr_str}")
+
+        print("Starting candidate search...")
         candidates, original_directions = find_candidates_along_route(
             stops,
             desired_type=desired_type,
@@ -359,97 +405,116 @@ def suggest_stops():
             search_radius=search_radius,
             max_candidates=max_candidates,
         )
-    except Exception as e:
-        return jsonify({"error": f"Failed to find candidates: {str(e)}"}), 500
+        print(f"Found {len(candidates)} initial candidates")
 
-    # Compute baseline total travel time for original route
-    if original_directions.get("status") != "OK":
-        return jsonify({"error": "Directions API failed for original route"}), 500
-    orig_total_seconds = 0
-    orig_distance_m = 0
-    for leg in original_directions["routes"][0].get("legs", []):
-        orig_total_seconds += int(leg.get("duration", {}).get("value", 0))
-        orig_distance_m += int(leg.get("distance", {}).get("value", 0))
+        # Compute baseline total travel time for original route
+        if original_directions.get("status") != "OK":
+            error_msg = f"Directions API failed for original route: {original_directions.get('status')}"
+            print(error_msg)
+            return jsonify({"error": error_msg}), 500
+            
+        orig_total_seconds = 0
+        orig_distance_m = 0
+        for leg in original_directions["routes"][0].get("legs", []):
+            orig_total_seconds += int(leg.get("duration", {}).get("value", 0))
+            orig_distance_m += int(leg.get("distance", {}).get("value", 0))
 
-    # For each candidate we estimate best insertion point (the leg whose midpoint is closest to the candidate),
-    # then compute the full route time with that candidate inserted using Directions API.
-    results = []
-    # Pre-compute leg midpoints (lat,lng) for original legs
-    legs = original_directions["routes"][0].get("legs", [])
-    leg_midpoints = []
-    for leg in legs:
-        start = leg.get("start_location")
-        end = leg.get("end_location")
-        if start and end:
-            mid = ((start["lat"] + end["lat"]) / 2.0, (start["lng"] + end["lng"]) / 2.0)
-        else:
-            mid = None
-        leg_midpoints.append(mid)
+        print(f"Original route: {orig_total_seconds}s, {orig_distance_m}m")
 
-    for c in candidates:
-        c_loc = c.get("location")
-        if not c_loc:
-            continue
-        c_lat, c_lng = c_loc["lat"], c_loc["lng"]
-        # Find nearest leg midpoint
-        best_idx = 0
-        best_dist = float("inf")
-        for i, mid in enumerate(leg_midpoints):
-            if not mid:
+        # Process candidates...
+        results = []
+        legs = original_directions["routes"][0].get("legs", [])
+        leg_midpoints = []
+        for leg in legs:
+            start = leg.get("start_location")
+            end = leg.get("end_location")
+            if start and end:
+                mid = ((start["lat"] + end["lat"]) / 2.0, (start["lng"] + end["lng"]) / 2.0)
+            else:
+                mid = None
+            leg_midpoints.append(mid)
+
+        print(f"Processing {len(candidates)} candidates...")
+        for i, c in enumerate(candidates):
+            print(f"Processing candidate {i+1}/{len(candidates)}: {c.get('name')}")
+            c_loc = c.get("location")
+            if not c_loc:
+                print(f"  Skipping - no location data")
                 continue
-            d = haversine_meters((c_lat, c_lng), mid)
-            if d < best_dist:
-                best_dist = d
-                best_idx = i
-        # We will insert between stops indices best_idx and best_idx+1
-        try:
-            total_seconds_with, dir_resp = compute_total_time_with_insertion(
-                addr_strs, best_idx, f"{c_lat},{c_lng}"
-            )
-        except Exception as e:
-            # if compute failed, skip candidate
-            print(f"Candidate Directions error for {c.get('name')}: {e}")
-            continue
-        if total_seconds_with is None:
-            # directions returned non-OK; skip
-            continue
-        added = int(total_seconds_with - orig_total_seconds)
-        # Apply time constraint filter if requested
-        if time_constraint_seconds is not None and added > int(time_constraint_seconds):
-            continue
+            c_lat, c_lng = c_loc["lat"], c_loc["lng"]
+            
+            # Find nearest leg midpoint
+            best_idx = 0
+            best_dist = float("inf")
+            for j, mid in enumerate(leg_midpoints):
+                if not mid:
+                    continue
+                d = haversine_meters((c_lat, c_lng), mid)
+                if d < best_dist:
+                    best_dist = d
+                    best_idx = j
+            
+            print(f"  Best insertion point: leg {best_idx}, distance: {best_dist}m")
+            
+            try:
+                total_seconds_with, dir_resp = compute_total_time_with_insertion(
+                    addr_strs, best_idx, f"{c_lat},{c_lng}"
+                )
+            except Exception as e:
+                print(f"  Directions error: {e}")
+                continue
+                
+            if total_seconds_with is None:
+                print(f"  Directions failed - skipping")
+                continue
+                
+            added = int(total_seconds_with - orig_total_seconds)
+            print(f"  Added time: {added}s")
+            
+            # Apply time constraint filter if requested
+            if time_constraint_seconds is not None and added > int(time_constraint_seconds):
+                print(f"  Filtered out - exceeds time constraint ({added} > {time_constraint_seconds})")
+                continue
 
-        result = {
-            "place_id": c.get("place_id"),
-            "name": c.get("name"),
-            "vicinity": c.get("vicinity"),
-            "location": c.get("location"),
-            "types": c.get("types"),
-            "rating": c.get("rating"),
-            "user_ratings_total": c.get("user_ratings_total"),
-            "insert_between": [best_idx, best_idx + 1],
-            "insert_leg_distance_to_sample_m": int(best_dist),
-            "total_travel_time_seconds": int(total_seconds_with),
-            "added_time_seconds": int(added),
-            # Optionally include snapshot of directions for this candidate
-            # "directions_snapshot": dir_resp
+            result = {
+                "place_id": c.get("place_id"),
+                "name": c.get("name"),
+                "vicinity": c.get("vicinity"),
+                "location": c.get("location"),
+                "types": c.get("types"),
+                "rating": c.get("rating"),
+                "user_ratings_total": c.get("user_ratings_total"),
+                "insert_between": [best_idx, best_idx + 1],
+                "insert_leg_distance_to_sample_m": int(best_dist),
+                "total_travel_time_seconds": int(total_seconds_with),
+                "added_time_seconds": int(added),
+            }
+            results.append(result)
+            print(f"  Added to results")
+            
+            # polite pause to avoid hitting rate limits
+            time.sleep(0.08)
+
+        # Sort by added travel time ascending
+        results.sort(key=lambda x: x["added_time_seconds"])
+        print(f"Returning {len(results)} final results")
+
+        response = {
+            "route_summary": {
+                "original_total_travel_time_seconds": int(orig_total_seconds),
+                "original_total_distance_meters": int(orig_distance_m),
+                "stops": stops,
+            },
+            "candidates": results,
+            "generated_at": datetime.utcnow().isoformat() + "Z",
         }
-        results.append(result)
-        # polite pause to avoid hitting rate limits
-        time.sleep(0.08)
-
-    # Sort by added travel time ascending
-    results.sort(key=lambda x: x["added_time_seconds"])
-
-    response = {
-        "route_summary": {
-            "original_total_travel_time_seconds": int(orig_total_seconds),
-            "original_total_distance_meters": int(orig_distance_m),
-            "stops": stops,
-        },
-        "candidates": results,
-        "generated_at": datetime.utcnow().isoformat() + "Z",
-    }
-    return jsonify(response)
+        return jsonify(response)
+        
+    except Exception as e:
+        print(f"Error in suggest_stops: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 
 if __name__ == "__main__":
