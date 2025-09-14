@@ -78,22 +78,22 @@ Respond with only the JSON object, no other text.`;
 
       // Initialize Gemini
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ 
-  model: "gemini-2.5-pro",
-  generationConfig: {
-    temperature: 0.7,
-    topK: 40,
-    topP: 0.95,
-    maxOutputTokens: 2048,
-  },
-});
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-pro",
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
+        },
+      });
 
       console.log('Calling Gemini API...');
-      
+
       // Generate content
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      
+
       // Check if response was blocked or empty
       if (!response.candidates || response.candidates.length === 0) {
         throw new Error('No response generated. Content may have been blocked by safety filters.');
@@ -108,21 +108,21 @@ Respond with only the JSON object, no other text.`;
       console.log('Raw Gemini response:', responseText);
 
       // Clean the response text (remove markdown formatting if present)
-      
 
-const cleanedText = responseText
-  .replace(/```json\n?/g, '')
-  .replace(/```\n?/g, '')
-  .trim();
 
-let parsedItinerary: Itinerary;
-try {
-  parsedItinerary = JSON.parse(cleanedText);
-} catch {
-  parsedItinerary = JSON.parse(jsonrepair(cleanedText));
-}
+      const cleanedText = responseText
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
 
-      
+      let parsedItinerary: Itinerary;
+      try {
+        parsedItinerary = JSON.parse(cleanedText);
+      } catch {
+        parsedItinerary = JSON.parse(jsonrepair(cleanedText));
+      }
+
+
       // Validate the parsed itinerary
       if (!parsedItinerary.stops || !Array.isArray(parsedItinerary.stops) || parsedItinerary.stops.length < 2) {
         throw new Error('Invalid itinerary format: insufficient stops');
@@ -158,56 +158,56 @@ try {
   };
 
   // Remove a stop
-const removeStop = (index: number) => {
-  if (!itinerary) return;
-  const updatedStops = itinerary.stops.filter((_, i) => i !== index);
-  setItinerary({ ...itinerary, stops: updatedStops });
-};
+  const removeStop = (index: number) => {
+    if (!itinerary) return;
+    const updatedStops = itinerary.stops.filter((_, i) => i !== index);
+    setItinerary({ ...itinerary, stops: updatedStops });
+  };
 
 
 
-// Regenerate a single stop
-const regenerateStop = async (index: number) => {
-  if (!itinerary) return;
-  try {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY!;
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+  // Regenerate a single stop
+  const regenerateStop = async (index: number) => {
+    if (!itinerary) return;
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY!;
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
-    const prompt = `Suggest one new stop in ${location} suitable for a ${activityType}. 
+      const prompt = `Suggest one new stop in ${location} suitable for a ${activityType}. 
 Respond with ONLY a valid JSON array of one string, no markdown.`;
 
-    const result = await model.generateContent(prompt);
-    const newStopText = result.response.text().trim();
-    const cleaned = newStopText.replace(/```json|```/g, '').trim();
+      const result = await model.generateContent(prompt);
+      const newStopText = result.response.text().trim();
+      const cleaned = newStopText.replace(/```json|```/g, '').trim();
 
-    const [newStop] = JSON.parse(cleaned);
+      const [newStop] = JSON.parse(cleaned);
 
-    const updatedStops = itinerary.stops.map((s, i) =>
-      i === index ? newStop : s
+      const updatedStops = itinerary.stops.map((s, i) =>
+        i === index ? newStop : s
+      );
+      setItinerary({ ...itinerary, stops: updatedStops });
+    } catch (err) {
+      console.error("Error regenerating stop:", err);
+      setError("Failed to regenerate stop. Try again.");
+    }
+  };
+
+  const getGoogleMapsUrl = (): string => {
+    if (!itinerary || itinerary.stops.length < 2) return "#";
+    const base = "https://www.google.com/maps/dir/";
+
+    const cleanedStops = itinerary.stops.map(s =>
+      encodeURIComponent(
+        s
+          .replace(/, United States/i, "") // remove country
+          .replace(/\s+/g, " ") // collapse extra spaces
+          .trim()
+      )
     );
-    setItinerary({ ...itinerary, stops: updatedStops });
-  } catch (err) {
-    console.error("Error regenerating stop:", err);
-    setError("Failed to regenerate stop. Try again.");
-  }
-};
 
-const getGoogleMapsUrl = (): string => {
-  if (!itinerary || itinerary.stops.length < 2) return "#";
-  const base = "https://www.google.com/maps/dir/";
-
-  const cleanedStops = itinerary.stops.map(s =>
-    encodeURIComponent(
-      s
-        .replace(/, United States/i, "") // remove country
-        .replace(/\s+/g, " ") // collapse extra spaces
-        .trim()
-    )
-  );
-
-  return base + cleanedStops.join("/");
-};
+    return base + cleanedStops.join("/");
+  };
 
   const isFormValid = (): boolean => {
     return !!(activityType && location && startDate && endDate);
@@ -224,25 +224,25 @@ const getGoogleMapsUrl = (): string => {
           </Button>
         </Link>
       </div>
-      
+
       <h3 className="text-2xl font-semibold">What are you planning?</h3>
-      
+
       <div className="flex items-center py-4 px-8 gap-2 bg-bglight rounded-2xl border border-cardborder">
         <p className='whitespace-nowrap'>I am planning a</p>
-        <Input 
-          type="text" 
-          placeholder="date" 
+        <Input
+          type="text"
+          placeholder="date"
           value={activityType}
           onChange={(e) => setActivityType(e.target.value)}
-          className='border-2 border-accent focus-visible:border-accent' 
+          className='border-2 border-accent focus-visible:border-accent'
         />
         <p className='whitespace-nowrap'>in</p>
-        <Input 
-          type="text" 
-          placeholder="New York City" 
+        <Input
+          type="text"
+          placeholder="New York City"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
-          className='border-2 border-accent focus-visible:border-accent' 
+          className='border-2 border-accent focus-visible:border-accent'
         />
       </div>
 
@@ -265,12 +265,12 @@ const getGoogleMapsUrl = (): string => {
         </div>
       )}
 
-      <Button 
+      <Button
         onClick={generateItinerary}
         disabled={loading || !isFormValid()}
         className='bg-accent px-16 py-4 cursor-crosshair disabled:opacity-50 disabled:cursor-not-allowed'
       >
-        {loading ? 'Generating...' : 'Generate Itinerary'} <ArrowRight/> 
+        {loading ? 'Generating...' : 'Generate Itinerary'} <ArrowRight />
       </Button>
 
       {itinerary && (
@@ -279,35 +279,35 @@ const getGoogleMapsUrl = (): string => {
             <MapPin size={20} />
             Your {activityType} Itinerary in {location}
           </h4>
-          
+
           <div className="space-y-6">
             <div>
               <h5 className="font-medium mb-3 text-lg">Route Stops:</h5>
               <div className="space-y-2">
                 {itinerary.stops.map((stop: string, index: number) => (
-  <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-lg border">
-    <div className="flex-shrink-0 w-8 h-8 bg-accent text-white rounded-full flex items-center justify-center text-sm font-medium">
-      {index + 1}
-    </div>
-    <span className="text-sm flex-1">{stop}</span>
-    <div className="flex gap-2">
-      <Button 
-        size="sm" 
-        variant="outline" 
-        onClick={() => regenerateStop(index)}
-      >
-        Regenerate
-      </Button>
-      <Button 
-        size="sm" 
-        variant="destructive" 
-        onClick={() => removeStop(index)}
-      >
-        Remove
-      </Button>
-    </div>
-  </div>
-))}
+                  <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-lg border">
+                    <div className="flex-shrink-0 w-8 h-8 bg-accent text-white rounded-full flex items-center justify-center text-sm font-medium">
+                      {index + 1}
+                    </div>
+                    <span className="text-sm flex-1">{stop}</span>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => regenerateStop(index)}
+                      >
+                        Regenerate
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => removeStop(index)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ))}
 
               </div>
             </div>
@@ -327,17 +327,17 @@ const getGoogleMapsUrl = (): string => {
               </div>
               <div className="p-3 bg-white rounded-lg border">
                 <span className="font-medium text-gray-600">Time Budget:</span>
-                <p>{Math.round(itinerary.time_constraint_seconds/3600)}h {Math.round((itinerary.time_constraint_seconds % 3600)/60)}m</p>
+                <p>{Math.round(itinerary.time_constraint_seconds / 3600)}h {Math.round((itinerary.time_constraint_seconds % 3600) / 60)}m</p>
               </div>
             </div>
-            <a 
-  href={getGoogleMapsUrl()} 
-  target="_blank" 
-  rel="noopener noreferrer"
-  className="mt-6 inline-block bg-green-600 text-white px-6 py-3 rounded-lg shadow hover:bg-green-700 transition"
->
-  View Full Route on Google Maps
-</a>
+            <a
+              href={getGoogleMapsUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-block bg-green-600 text-white px-6 py-3 rounded-lg shadow hover:bg-green-700 transition"
+            >
+              View Full Route on Google Maps
+            </a>
 
           </div>
         </div>

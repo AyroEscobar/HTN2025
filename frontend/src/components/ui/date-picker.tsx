@@ -13,15 +13,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
-export function Calendar24(props: {label: string}) {
+export function Calendar24({label, date, setDate}: { label: string, date: Date | undefined, setDate: React.Dispatch<React.SetStateAction<Date | undefined>> }) {
   const [open, setOpen] = React.useState(false)
-  const [date, setDate] = React.useState<Date | undefined>(undefined)
 
   return (
     <div className="flex gap-4">
       <div className="flex flex-col gap-3">
         <Label htmlFor="date-picker" className="px-1">
-          {props.label}
+          {label}
         </Label>
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
