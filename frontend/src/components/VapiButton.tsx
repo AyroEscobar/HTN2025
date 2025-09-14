@@ -1,57 +1,64 @@
-import React from 'react';
-import { useVapi } from '../hooks/useVapi';
+import React, { useState, useEffect } from "react";
+import Vapi from "@vapi-ai/web";
 
-interface VapiButtonProps {
-  publicKey?: string;
-  assistantId?: string;
-  baseUrl?: string;
-  className?: string;
-  children?: React.ReactNode;
-}
+const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY || "");
 
-export const VapiButton: React.FC<VapiButtonProps> = ({
-  publicKey = process.env.REACT_APP_VAPI_PUBLIC_KEY,
-  assistantId = process.env.REACT_APP_VAPI_ASSISTANT_ID,
-  baseUrl = process.env.REACT_APP_VAPI_BASE_URL,
-  className,
-  children,
-}) => {
-  const { startCall, endCall, isSessionActive, isLoading, error } = useVapi({
-    publicKey: publicKey || '',
-    assistantId: assistantId || '',
-    baseUrl,
-  });
+export const VapiButton: React.FC = () => {
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleClick = () => {
-    if (isSessionActive) {
-      endCall();
-    } else {
-      startCall();
+  useEffect(() => {
+    vapi.on("call-start", () => {
+      setIsCallActive(true);
+      setIsLoading(false);
+    });
+
+    vapi.on("call-end", () => {
+      setIsCallActive(false);
+      setIsLoading(false);
+    });
+
+    vapi.on("error", (error) => {
+      console.error("VAPI Error:", error);
+      setIsLoading(false);
+      setIsCallActive(false);
+    });
+
+    return () => {
+      vapi.removeAllListeners();
+    };
+  }, []);
+
+  const startCall = async () => {
+    if (!process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY || !process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID) {
+      console.error("VAPI environment variables not set");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
+    } catch (err) {
+      console.error("Error starting call:", err);
+      setIsLoading(false);
     }
   };
 
-  if (!publicKey || !assistantId) {
-    return (
-      <div className="text-red-500 p-2">
-        Missing Vapi configuration. Please set environment variables.
-      </div>
-    );
-  }
+  const endCall = () => {
+    vapi.stop();
+  };
 
   return (
-    <>
-      <button
-        onClick={handleClick}
-        disabled={isLoading}
-        className={className || "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"}
-      >
-        {children || (isLoading ? 'Connecting...' : isSessionActive ? 'End Call' : 'Start Call')}
-      </button>
-      {error && (
-        <div className="text-red-500 mt-2 text-sm">
-          Error: {error}
-        </div>
-      )}
-    </>
+    <button
+      onClick={isCallActive ? endCall : startCall}
+      disabled={isLoading}
+      className={`px-6 py-3 rounded-full font-medium transition-all duration-200 ${
+        isCallActive
+          ? "bg-red-500 hover:bg-red-600 text-white"
+          : "bg-accent hover:bg-secondary text-white"
+      } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+    >
+      {isLoading ? "Connecting..." : isCallActive ? "End Call" : "🎤 Start Voice Assistant"}
+    </button>
   );
 };
