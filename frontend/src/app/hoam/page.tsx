@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import Image from "next/image";
 
 // Hardcoded restaurant data
 const hardcodedRestaurants = [
@@ -63,17 +64,17 @@ const HomePage: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: place.trim() })
       });
-      
+
       const data = await res.json();
 
       if (data.status === "OK" && data.results && data.results.length > 0) {
         const result = data.results[0];
         const { lat, lng } = result.geometry.location;
         const name = result.name;
-        
+
         // Add random travel time for demo purposes (5-25 minutes)
         const travelTime = Math.floor(Math.random() * 20) + 5;
-        
+
         setStops([...stops, { lat, lng, name, travelTime }]);
         setPlace("");
       } else {
@@ -166,17 +167,16 @@ const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-bglight">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-border">
+      <header className="shadow-sm border-b border-border">
         {/* Top row with logo, search, and add stop */}
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
+        <div className="w-full py-4 flex justify-center">
+          <div className="flex flex-row items-center justify-between gap-4 w-[80rem]">
             {/* Logo */}
-            <div className="flex-shrink-0">
-              <h1 className="text-2xl font-bold text-accent">RouteIt</h1>
-            </div>
+              <Image src={"Logo.svg"} alt="Logo" width={329} height={139} className="h-10" />
             
+
             {/* Search Bar */}
-            <div className="flex-1 max-w-2xl mx-8">
+            <div className="flex-1 max-w-2xl">
               <div className="flex gap-2">
                 <Input
                   type="text"
@@ -184,34 +184,33 @@ const HomePage: React.FC = () => {
                   onChange={(e) => setPlace(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Enter a place name to add as a stop"
-                  className="flex-1"
+                  className="flex-1 border border-border"
                   disabled={isSearching}
                 />
-                <Button 
+                <Button
                   onClick={geocodePlace}
                   disabled={isSearching || !place.trim()}
                   className="bg-accent hover:bg-accent/90"
                 >
                   {isSearching ? "Searching..." : "Add Stop"}
                 </Button>
-              </div>
-              {/* Advanced Search Link */}
               <div className="mt-2 text-center">
-                <Link 
-                  href="/homie" 
-                  className="text-sm text-muted-foreground hover:text-accent transition-colors underline"
+                <Link
+                  href="/homie"
+                  className="text-sm text-muted-foreground hover:text-accent transition-colors underline mr-10"
                 >
                   Advanced Search
                 </Link>
+              </div>
+              {/* Advanced Search Link */}
               </div>
             </div>
           </div>
         </div>
 
         {/* Filters row */}
-        <div className="bg-bgcontainer border-t border-border">
-          <div className="max-w-7xl mx-auto px-4 py-3">
-            <div className="flex flex-wrap items-center gap-4">
+        <div className="bg-bgcontainer border-t border-border flex justify-center">
+          <div className="flex justify-center w-[54rem] py-3 gap-8">
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-darktext">Type:</label>
                 <Input
@@ -222,7 +221,7 @@ const HomePage: React.FC = () => {
                   className="w-48"
                 />
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-darktext">Keyword:</label>
                 <Input
@@ -233,7 +232,7 @@ const HomePage: React.FC = () => {
                   className="w-48"
                 />
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-darktext">Max Time (min):</label>
                 <Input
@@ -246,7 +245,6 @@ const HomePage: React.FC = () => {
                   className="w-24"
                 />
               </div>
-            </div>
           </div>
         </div>
       </header>
@@ -256,7 +254,7 @@ const HomePage: React.FC = () => {
         {/* Current Stops Section - Vertical Layout with Arrows */}
         <div className="text-center mb-12">
           <h2 className="text-2xl font-bold text-darktext mb-6">Current Stops ({stops.length})</h2>
-          
+
           {stops.length === 0 ? (
             <div className="bg-white rounded-lg border border-cardborder p-8 shadow-sm">
               <p className="text-muted-foreground text-lg">No stops added yet</p>
@@ -280,7 +278,7 @@ const HomePage: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      <Button 
+                      <Button
                         variant="destructive"
                         size="sm"
                         onClick={() => removeStop(i)}
@@ -313,8 +311,8 @@ const HomePage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {hardcodedRestaurants.map((restaurant) => (
               <div key={restaurant.id} className="bg-white rounded-lg border border-cardborder shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                <img 
-                  src={restaurant.image} 
+                <img
+                  src={restaurant.image}
                   alt={restaurant.name}
                   className="w-full h-48 object-cover"
                 />
@@ -323,9 +321,9 @@ const HomePage: React.FC = () => {
                     <h3 className="text-lg font-semibold text-darktext">{restaurant.name}</h3>
                     <span className="text-sm text-muted-foreground">{restaurant.distance} km</span>
                   </div>
-                  
+
                   <p className="text-sm text-muted-foreground mb-3">{restaurant.cuisine}</p>
-                  
+
                   <div className="flex justify-between items-center">
                     <div className="flex flex-col gap-1">
                       {renderStars(restaurant.rating)}
@@ -348,14 +346,14 @@ const HomePage: React.FC = () => {
             <p className="text-muted-foreground mb-6">
               Add at least 2 stops above, then click below to discover interesting places along your route
             </p>
-            
-            <Button 
+
+            <Button
               onClick={handleSubmit}
               disabled={stops.length < 2}
               size="lg"
               className="bg-accent hover:bg-accent/90 text-white px-8 py-3"
             >
-              {stops.length < 2 
+              {stops.length < 2
                 ? `Add ${2 - stops.length} more stop${2 - stops.length === 1 ? '' : 's'} to continue`
                 : "Find Stops Along Route"
               }
@@ -368,7 +366,7 @@ const HomePage: React.FC = () => {
           <div className="mt-12">
             <div className="bg-white rounded-lg border border-cardborder shadow-sm p-6">
               <h2 className="text-2xl font-bold text-darktext mb-6 text-center">Suggested Stops</h2>
-              
+
               {response.error ? (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <p className="text-red-800 font-semibold">Error: {response.error}</p>
@@ -380,7 +378,7 @@ const HomePage: React.FC = () => {
                       <span className="font-semibold">Original Route Time:</span> {Math.round(response.route_summary?.original_total_travel_time_seconds / 60)} minutes
                     </p>
                   </div>
-                  
+
                   {response.candidates && response.candidates.length > 0 ? (
                     <div className="space-y-4">
                       {response.candidates.map((candidate: any, i: number) => (
@@ -392,9 +390,9 @@ const HomePage: React.FC = () => {
                               <p className="text-sm font-medium text-darktext">{Math.round(candidate.total_travel_time_seconds / 60)} min total</p>
                             </div>
                           </div>
-                          
+
                           <p className="text-muted-foreground mb-2">{candidate.vicinity}</p>
-                          
+
                           {candidate.rating && (
                             <div className="flex items-center gap-2 mb-2">
                               <div className="flex items-center">
@@ -404,7 +402,7 @@ const HomePage: React.FC = () => {
                               <span className="text-sm text-muted-foreground">({candidate.user_ratings_total} reviews)</span>
                             </div>
                           )}
-                          
+
                           {candidate.types && (
                             <div className="flex flex-wrap gap-1 mt-3">
                               {candidate.types.slice(0, 5).map((type: string, idx: number) => (
