@@ -1,0 +1,11 @@
+{
+    "agent_loop": "OPENAI",
+    "model_choice": "OpenAI: Computer-Use Preview",
+    "custom_model": "Qwen2.5-VL-7B-Instruct",
+    "provider_base_url": "http://localhost:1234/v1",
+    "save_trajectory": true,
+    "recent_images": 3,
+    "computer_os": "macos",
+    "computer_provider": "localhost",
+    "container_name": ""
+}
